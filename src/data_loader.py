@@ -1,31 +1,30 @@
-STATUS_CONCLUIDO = ["Pago", "Contrato/Template quitado"]
+import pandas as pd
 
-def calcular_kpis(df_compras, df_pagamentos):
-    orcamento_total = df_compras["Valor"].sum()
+SHEET_ID = "1Cy1hmAt8SVii762eMX5Nec-J18Zk7tEbgLgZB4tmy5Y"
+URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
-    df_pago = df_pagamentos[df_pagamentos["Status"].isin(STATUS_CONCLUIDO)]
-    df_andamento = df_pagamentos[~df_pagamentos["Status"].isin(STATUS_CONCLUIDO)]
+def load_data():
+    df = pd.read_csv(URL, header=2, dtype=str)
 
-    total_pago = df_pago["Valor"].sum()
-    total_andamento = df_andamento["Valor"].sum()
-    saldo_disponivel = orcamento_total - total_pago - total_andamento
-    perc_executado = (total_pago / orcamento_total * 100) if orcamento_total > 0 else 0
+    # Normaliza nomes das colunas (remove espaços invisíveis)
+    df.columns = df.columns.str.strip()
 
-    contratos_vencendo = df_compras[
-        (df_compras["Dias vencimento"] <= 30) & (df_compras["Dias vencimento"] >= 0)
-    ].shape[0]
+    # Remove linhas completamente vazias
+    df = df.dropna(how="all")
 
-    contratos_vencidos = df_compras[df_compras["Dias vencimento"] < 0].shape[0]
+    # Padroniza os campos de texto
+    df["Tipo"] = df["Tipo"].astype(str).str.strip().str.title()
+    df["Status"] = df["Status"].astype(str).str.strip()
+    df["Fornecedor"] = df["Fornecedor"].astype(str).str.strip()
 
-    return {
-        "orcamento_total": orcamento_total,
-        "total_pago": total_pago,
-        "total_andamento": total_andamento,
-        "saldo_disponivel": saldo_disponivel,
-        "perc_executado": perc_executado,
-        "contratos_vencendo": contratos_vencendo,
-        "contratos_vencidos": contratos_vencidos,
-        "fornecedores_ativos": df_andamento["Fornecedor"].nunique(),
-        "parcelas_pendentes": df_andamento.shape[0],
-    }
+    # Converte campos numéricos e de data
+    df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce").fillna(0)
+    df["Dias vencimento"] = pd.to_numeric(df["Dias vencimento"], errors="coerce").fillna(0)
+    df["Data pgto"] = pd.to_datetime(df["Data pgto"], errors="coerce", dayfirst=True)
+    df["Término Contrato"] = pd.to_datetime(df["Término Contrato"], errors="coerce", dayfirst=True)
 
+    # Separação crucial: Compra = orçamento | Pagamento = fluxo de caixa
+    df_compras = df[df["Tipo"] == "Compra"].copy()
+    df_pagamentos = df[df["Tipo"] == "Pagamento"].copy()
+
+    return df_compras, df_pagamentos
