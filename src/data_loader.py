@@ -1,7 +1,7 @@
 import pandas as pd
 
 SHEET_ID = "1Cy1hmAt8SVii762eMX5Nec-J18Zk7tEbgLgZB4tmy5Y"
-URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1725486310"
 
 def load_data():
     df = pd.read_csv(URL, header=2, dtype=str)
